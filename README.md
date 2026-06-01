@@ -1,5 +1,7 @@
 # Tres en Raya vs IA - TensorFlow.js
 
+## 🌐 Demo en Vivo
+Puedes ver el sitio funcionando en tiempo real [aquí][(TU_ENLACE_DE_GITHUB_PAGES](https://ramirorn.github.io/tres-en-raya-seminario/))
 Este proyecto es una implementación interactiva del clásico juego del Tres en Raya (Tic-Tac-Toe), donde un jugador humano se enfrenta a un modelo de inteligencia artificial pre-entrenado utilizando TensorFlow.js en el navegador.
 
 ## Información Académica
