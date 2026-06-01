@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tic Tac Toe vs AI</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.0.0/dist/tf.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --cell-bg: rgba(255, 255, 255, 0.05);
+      --cell-hover: rgba(255, 255, 255, 0.1);
+      --border-color: rgba(255, 255, 255, 0.1);
+      --text-color: #f8fafc;
+      --x-color: #38bdf8;
+      --o-color: #f43f5e;
+      --glow-x: 0 0 15px rgba(56, 189, 248, 0.5);
+      --glow-o: 0 0 15px rgba(244, 63, 94, 0.5);
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at center, #1e293b 0%, #020617 100%);
+      font-family: 'Inter', system-ui, sans-serif;
+      color: var(--text-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    h1 {
+      font-size: 3rem;
+      font-weight: 800;
+      background: linear-gradient(to right, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 30px rgba(56, 189, 248, 0.3);
+      text-align: center;
+    }
+
+    #message {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 2rem;
+      height: 1.5rem;
+      color: #94a3b8;
+      transition: color 0.3s ease;
+      text-align: center;
+    }
+
+    .board-container {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(10px);
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(3, 100px);
+      grid-template-rows: repeat(3, 100px);
+      gap: 12px;
+    }
+
+    .cell {
+      background: var(--cell-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      font-size: 4rem;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+    }
+
+    .cell:hover {
+      background: var(--cell-hover);
+      transform: scale(1.02);
+    }
+
+    .cell.x {
+      color: var(--x-color);
+      text-shadow: var(--glow-x);
+    }
+
+    .cell.o {
+      color: var(--o-color);
+      text-shadow: var(--glow-o);
+    }
+
+    .cell:active {
+      transform: scale(0.95);
+    }
+
+    .reset-btn {
+      margin-top: 2.5rem;
+      background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+      color: white;
+      border: none;
+      padding: 12px 32px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 20px -10px rgba(99, 102, 241, 0.6);
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .reset-btn.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .reset-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 15px 25px -10px rgba(99, 102, 241, 0.8);
+    }
+
+    #history-container {
+      margin-top: 2rem;
+      width: 100%;
+      max-width: 400px;
+      display: none;
+      flex-direction: column;
+      gap: 1rem;
+      padding-bottom: 2rem;
+    }
+
+    #history-container h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #e2e8f0;
+      text-align: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .history-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 15px;
+      backdrop-filter: blur(10px);
+    }
+
+    .history-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #94a3b8;
+      text-align: center;
+    }
+
+    .history-board {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 4px;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 6px;
+      border-radius: 8px;
+    }
+
+    .history-cell {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      padding: 12px 4px;
+      text-align: center;
+      font-size: 0.85rem;
+      font-family: monospace;
+      color: #64748b;
+    }
+
+    .history-cell.chosen {
+      background: rgba(244, 63, 94, 0.15);
+      color: var(--o-color);
+      font-weight: bold;
+      border: 1px solid rgba(244, 63, 94, 0.3);
+      box-shadow: inset 0 0 10px rgba(244, 63, 94, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <h1>Tic Tac Toe vs AI</h1>
+  <div id="message">Loading Neural Network...</div>
+  
+  <div class="board-container">
+    <div id="board">
+      <div class="cell" data-index="0"></div>
+      <div class="cell" data-index="1"></div>
+      <div class="cell" data-index="2"></div>
+      <div class="cell" data-index="3"></div>
+      <div class="cell" data-index="4"></div>
+      <div class="cell" data-index="5"></div>
+      <div class="cell" data-index="6"></div>
+      <div class="cell" data-index="7"></div>
+      <div class="cell" data-index="8"></div>
+    </div>
+  </div>
+
+  <button class="reset-btn" id="resetBtn" onclick="resetGame()">Play Again</button>
+
+  <div id="history-container">
+    <h2>AI Move History</h2>
+    <div id="history-list"></div>
+  </div>
+
+  <script>
+    let model;
+    let boardState = Array(9).fill(0);
+    let gameOver = false;
+    let moveHistory = [];
+
+    const cells = document.querySelectorAll('.cell');
+    const messageDiv = document.getElementById('message');
+    const resetBtn = document.getElementById('resetBtn');
+
+    function checkWin(board) {
+      const lines = [
+        [0, 1, 2], [3, 4, 5], [6, 7, 8],
+        [0, 3, 6], [1, 4, 7], [2, 5, 8],
+        [0, 4, 8], [2, 4, 6]
+      ];
+      for (let line of lines) {
+        const [a, b, c] = line;
+        if (board[a] !== 0 && board[a] === board[b] && board[a] === board[c]) {
+          return board[a];
+        }
+      }
+      if (!board.includes(0)) return 0;
+      return null;
+    }
+
+    function updateBoard() {
+      cells.forEach((cell, i) => {
+        if (boardState[i] === 1) {
+          cell.textContent = 'X';
+          cell.className = 'cell x';
+        } else if (boardState[i] === -1) {
+          cell.textContent = 'O';
+          cell.className = 'cell o';
+        } else {
+          cell.textContent = '';
+          cell.className = 'cell';
+        }
+      });
+    }
+
+    function handleGameEnd(result) {
+      gameOver = true;
+      resetBtn.classList.add('visible');
+      if (result === 1) {
+        messageDiv.textContent = 'Victory! You defeated the AI.';
+        messageDiv.style.color = 'var(--x-color)';
+      } else if (result === -1) {
+        messageDiv.textContent = 'Defeat! The AI wins.';
+        messageDiv.style.color = 'var(--o-color)';
+      } else {
+        messageDiv.textContent = 'It\'s a Draw!';
+        messageDiv.style.color = '#e2e8f0';
+      }
+      renderHistory();
+    }
+
+    function resetGame() {
+      boardState = Array(9).fill(0);
+      gameOver = false;
+      moveHistory = [];
+      document.getElementById('history-container').style.display = 'none';
+      updateBoard();
+      resetBtn.classList.remove('visible');
+      messageDiv.textContent = 'Your turn (X)';
+      messageDiv.style.color = 'var(--x-color)';
+    }
+
+    function renderHistory() {
+      const container = document.getElementById('history-container');
+      const list = document.getElementById('history-list');
+      if (moveHistory.length === 0) return;
+      
+      list.innerHTML = '';
+      moveHistory.forEach(history => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        
+        const title = document.createElement('div');
+        title.className = 'history-title';
+        title.textContent = `AI Turn ${history.turn} - Model Probabilities`;
+        item.appendChild(title);
+
+        const boardDiv = document.createElement('div');
+        boardDiv.className = 'history-board';
+        
+        for (let i = 0; i < 9; i++) {
+          const cell = document.createElement('div');
+          cell.className = 'history-cell';
+          if (i === history.chosen) {
+            cell.classList.add('chosen');
+          }
+          cell.textContent = history.probs[i].toFixed(3);
+          boardDiv.appendChild(cell);
+        }
+        
+        item.appendChild(boardDiv);
+        list.appendChild(item);
+      });
+      
+      container.style.display = 'flex';
+    }
+
+    async function modelPlay() {
+      if (gameOver) return;
+
+      messageDiv.textContent = 'AI is thinking...';
+      messageDiv.style.color = '#94a3b8';
+      
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      let bestMove = -1;
+      let moveData = null;
+      
+      // Using requested methods to interact with the model: tf.tidy, tf.tensor, model.predict
+      tf.tidy(() => {
+        const input = tf.tensor([boardState]); 
+        const prediction = model.predict(input);
+        const data = prediction.dataSync(); 
+        moveData = Array.from(data);
+        
+        let bestScore = -Infinity;
+        for (let i = 0; i < 9; i++) {
+          if (boardState[i] === 0) {
+            if (data[i] > bestScore) {
+              bestScore = data[i];
+              bestMove = i;
+            }
+          }
+        }
+      });
+
+      if (bestMove !== -1) {
+        moveHistory.push({
+          turn: moveHistory.length + 1,
+          probs: moveData,
+          chosen: bestMove
+        });
+        boardState[bestMove] = -1;
+        updateBoard();
+        const result = checkWin(boardState);
+        if (result !== null) {
+          handleGameEnd(result);
+        } else {
+          messageDiv.textContent = 'Your turn (X)';
+          messageDiv.style.color = 'var(--x-color)';
+        }
+      }
+    }
+
+    cells.forEach(cell => {
+      cell.addEventListener('click', () => {
+        if (gameOver || !model) return;
+        const idx = parseInt(cell.getAttribute('data-index'));
+        if (boardState[idx] === 0) {
+          boardState[idx] = 1; 
+          updateBoard();
+          const result = checkWin(boardState);
+          if (result !== null) {
+            handleGameEnd(result);
+          } else {
+            modelPlay();
+          }
+        }
+      });
+    });
+
+    // Initialize the model
+    tf.ready().then(() => {
+      const modelPath = 'model/ttt_model.json';
+      tf.loadLayersModel(modelPath).then((loadedModel) => {
+        model = loadedModel;
+        messageDiv.textContent = 'Your turn (X)';
+        messageDiv.style.color = 'var(--x-color)';
+      });
+    });
+  </script>
+</body>
+</html>
